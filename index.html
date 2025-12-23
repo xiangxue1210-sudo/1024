@@ -233,7 +233,7 @@
             return null;
         };
 
-        // --- 吉伊卡哇冒险 2.0 (增强版) ---
+        // --- 吉伊卡哇冒险 2.1 (修复版) ---
         const ChiikawaGame = ({ onClose }) => {
             const canvasRef = useRef(null);
             const [gameState, setGameState] = useState('playing'); 
@@ -254,15 +254,14 @@
                     x: 100, y: 200, width: 45, height: 45,
                     speed: 6.5, velX: 0, velY: 0,
                     jumping: false, 
-                    jumpCount: 0, // 二段跳计数
+                    jumpCount: 0,
                     grounded: false, facing: 'right',
-                    isPanicking: false // 惊恐脸状态
+                    isPanicking: false
                 };
 
                 const keys = {};
                 const particles = [];
 
-                // 增加打击反馈粒子
                 const spawnHitParticles = (x, y) => {
                     for(let i=0; i<8; i++) {
                         particles.push({
@@ -285,7 +284,6 @@
                     { x: 900, y: 260, width: 120, height: 25, type: 'normal' },
                     { x: 1100, y: 160, width: 150, height: 25, type: 'normal' },
                     { x: 1400, y: 240, width: 120, height: 25, type: 'normal' },
-                    // 动态移动平台
                     { x: 1650, y: 150, width: 120, height: 20, type: 'moving', startY: 150, range: 100 },
                     { x: 1850, y: 280, width: 200, height: 25, type: 'normal' },
                 ];
@@ -333,19 +331,17 @@
                     player.x += player.velX;
                     player.y += player.velY;
 
-                    // 摄像机跟随 (带点平滑)
+                    // 摄像机跟随
                     const targetCamX = player.x - canvas.width / 3;
                     camera.x += (targetCamX - camera.x) * 0.1;
                     if (camera.x < 0) camera.x = 0;
                     if (camera.x > levelWidth - canvas.width) camera.x = levelWidth - canvas.width;
 
-                    // 边界处理
                     if (player.x < 0) player.x = 0;
 
-                    // 惊恐脸判定：如果脚下空空且正在下落
                     player.isPanicking = !player.grounded && player.velY > 3;
 
-                    // 平台碰撞与移动
+                    // 平台碰撞
                     player.grounded = false;
                     platforms.forEach(p => {
                         if (p.type === 'moving') {
@@ -360,15 +356,11 @@
                                 player.jumping = false;
                                 player.grounded = true;
                                 player.jumpCount = 0;
-                                // 如果在移动平台上，跟随移动
-                                if (p.type === 'moving') {
-                                    player.y = p.y - player.height;
-                                }
                             }
                         }
                     });
 
-                    // 物品收集
+                    // 物品收集逻辑 (移除了物理碰撞)
                     items.forEach(item => {
                         if (!item.collected && player.x < item.x + item.width && player.x + player.width > item.x &&
                             player.y < item.y + item.height && player.y + player.height > item.y) {
@@ -394,11 +386,10 @@
 
                         if (player.x < en.x + en.width && player.x + player.width > en.x &&
                             player.y < en.y + en.height && player.y + player.height > en.y) {
-                            // 踩踏判定：头部打击
                             if (player.velY > 0 && player.y + player.height - player.velY <= en.y + 15) {
                                 en.dead = true;
-                                player.velY = -12; // 踩踏反弹
-                                player.jumpCount = 1; // 重置二段跳机会
+                                player.velY = -12;
+                                player.jumpCount = 1;
                                 spawnHitParticles(en.x + 20, en.y);
                                 setScore(s => s + 200);
                             } else {
@@ -407,7 +398,6 @@
                         }
                     });
 
-                    // 更新粒子
                     for(let i=particles.length-1; i>=0; i--) {
                         particles[i].x += particles[i].vx;
                         particles[i].y += particles[i].vy;
@@ -415,7 +405,6 @@
                         if(particles[i].life <= 0) particles.splice(i, 1);
                     }
 
-                    // 胜负判断
                     if (player.y > canvas.height + 100) setGameState('lost');
                     if (player.x > levelWidth - 100 && stars >= 6) setGameState('won');
 
@@ -426,7 +415,7 @@
                 const draw = () => {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     
-                    // 1. 视差背景 - 云朵
+                    // 背景云
                     ctx.fillStyle = 'rgba(255,255,255,0.7)';
                     for(let i=0; i<6; i++) {
                         const cx = (i * 500 - camera.x * 0.3) % (levelWidth + 500);
@@ -440,7 +429,7 @@
                     ctx.save();
                     ctx.translate(-camera.x, 0);
 
-                    // 2. 画平台
+                    // 画平台
                     platforms.forEach(p => {
                         ctx.fillStyle = p.type === 'moving' ? '#B5836D' : '#5C4033';
                         ctx.beginPath();
@@ -450,7 +439,7 @@
                         ctx.fillRect(p.x, p.y, p.width, 8);
                     });
 
-                    // 3. 粒子系统
+                    // 粒子
                     particles.forEach(p => {
                         ctx.globalAlpha = p.life;
                         ctx.fillStyle = p.color;
@@ -460,50 +449,43 @@
                     });
                     ctx.globalAlpha = 1;
 
-                    // 4. 终点
+                    // 终点
                     ctx.fillStyle = '#5C4033'; ctx.fillRect(levelWidth - 80, 200, 8, 180);
                     ctx.fillStyle = stars >= 6 ? '#FF9B9B' : '#CCC';
                     ctx.beginPath();
                     ctx.moveTo(levelWidth-72, 200); ctx.lineTo(levelWidth-20, 225); ctx.lineTo(levelWidth-72, 250);
                     ctx.fill();
 
-                    // 5. 画吉伊卡哇 (精进表情)
+                    // 画吉伊卡哇
                     ctx.save();
                     const walkCycle = (player.velX !== 0 && player.grounded) ? Math.sin(frame * 0.2) * 4 : 0;
                     ctx.translate(player.x, player.y + walkCycle);
                     if (player.facing === 'left') { ctx.translate(player.width, 0); ctx.scale(-1, 1); }
                     
-                    // 身体
                     ctx.fillStyle = 'white'; ctx.strokeStyle = '#5C4033'; ctx.lineWidth = 3;
                     ctx.beginPath(); ctx.ellipse(22, 22, 20, 18, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-                    // 耳朵
                     ctx.beginPath(); ctx.arc(10, 12, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
                     ctx.beginPath(); ctx.arc(34, 12, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
                     
-                    // 精进表情
                     ctx.fillStyle = '#5C4033';
                     if (player.isPanicking) {
-                        // 惊恐脸 (ᯅ̈)
                         ctx.lineWidth = 2;
                         ctx.beginPath(); ctx.arc(16, 22, 3, 0, Math.PI*2); ctx.stroke();
                         ctx.beginPath(); ctx.arc(28, 22, 3, 0, Math.PI*2); ctx.stroke();
                         ctx.beginPath(); ctx.arc(22, 30, 4, 0, Math.PI*2); ctx.stroke();
                     } else if (player.jumping) {
-                        // 跳跃眯眼
                         ctx.lineWidth = 2;
                         ctx.beginPath(); ctx.moveTo(14, 23); ctx.lineTo(19, 21); ctx.stroke();
                         ctx.beginPath(); ctx.moveTo(25, 21); ctx.lineTo(30, 23); ctx.stroke();
                     } else {
-                        // 正常呆萌眼
                         ctx.beginPath(); ctx.arc(16, 22, 2.5, 0, Math.PI*2); ctx.fill();
                         ctx.beginPath(); ctx.arc(28, 22, 2.5, 0, Math.PI*2); ctx.fill();
                     }
-                    // 腮红
                     ctx.fillStyle = '#FFDAE9'; ctx.beginPath(); ctx.arc(10, 28, 4, 0, Math.PI*2); ctx.fill();
                     ctx.beginPath(); ctx.arc(34, 28, 4, 0, Math.PI*2); ctx.fill();
                     ctx.restore();
 
-                    // 6. 物品
+                    // 星星 (改为可穿过物体)
                     items.forEach(item => {
                         if (!item.collected) {
                             ctx.fillStyle = '#FFF3AD';
@@ -515,7 +497,7 @@
                         }
                     });
 
-                    // 7. 敌人
+                    // 敌人
                     enemies.forEach(en => {
                         if (en.dead) return;
                         if (en.type === 'beetle') {
@@ -571,7 +553,7 @@
                                     className="absolute inset-0 bg-white/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-10 text-center"
                                 >
                                     <h2 className="text-7xl font-black mb-4 italic text-[#5C4033]">
-                                        {gameState === 'won' ? 'ヤハ! 胜利通关' : '呜呜... 失败了'}
+                                        {gameState === 'won' ? 'ヤ哈! 胜利通关' : '呜呜... 失败了'}
                                     </h2>
                                     <p className="text-2xl font-bold mb-10 opacity-70">
                                         {gameState === 'won' ? '你成功集齐了所有星星并抵达终点！' : '不要气馁，吉伊卡哇会继续努力的！'}
@@ -602,7 +584,7 @@
                         </div>
                         <div className="flex items-center gap-3 italic">
                             <span className="text-[#FF9B9B]">特性:</span>
-                            <span>视差背景、踩踏反弹、表情包反馈！</span>
+                            <span>视差背景、踩踏反弹、星星收集、表情包反馈！</span>
                         </div>
                     </div>
                 </div>
@@ -696,7 +678,7 @@
                                 >
                                     <div className="text-center mb-8">
                                         <h2 className="text-4xl font-black italic mb-2 tracking-widest">CHIIKAWA ADVENTURE</h2>
-                                        <p className="font-bold opacity-60 italic">勇敢讨伐小桃和甲壳虫，集齐 6 颗星星抵达终点！</p>
+                                        <p className="font-bold opacity-60 italic">勇敢讨伐小桃和甲壳虫，收集黄色星星并抵达终点！</p>
                                     </div>
                                     <ChiikawaGame onClose={() => setIsExploreOpen(false)} />
                                 </motion.section>
@@ -793,6 +775,7 @@
                         </AnimatePresence>
                     </main>
 
+                    {/* 弹窗部分 */}
                     <AnimatePresence>
                         {isAboutOpen && (
                             <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setIsAboutOpen(false)}>
